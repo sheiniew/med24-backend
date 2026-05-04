@@ -23,7 +23,26 @@ router.get("/guides", async (req, res) => {
     res.json(data);
 });
 
-// GET /guides/doctor/:doctorId
+router.get("/guides/:id", async (req, res) => {
+    const { id } = req.params;
+
+    const { data, error } = await supabase
+        .from("medical_guides")
+        .select(`
+            *,
+            doctors (
+                specialty,
+                profiles (full_name)
+            )
+        `)
+        .eq("id", id)
+        .single();
+
+    if (error) return res.status(404).json({ error: "Guía no encontrada" });
+
+    res.json(data);
+});
+
 router.get("/doctor/:doctorId", async (req, res) => {
     const { doctorId } = req.params;
 
@@ -68,7 +87,6 @@ router.post("/become-doctor", verifyToken, async (req, res) => {
     const userId = req.user.id;
     const form = req.body;
 
-    // actualizar rol
     await supabase
         .from("profiles")
         .update({ role: "doctor" })
@@ -86,7 +104,6 @@ router.post("/become-doctor", verifyToken, async (req, res) => {
     res.json(data);
 });
 
-// GET /doctors/:id
 router.get("/:id", async (req, res) => {
     const { id } = req.params;
 
@@ -99,7 +116,7 @@ router.get("/:id", async (req, res) => {
         email
       )
     `)
-        .eq("id", id) // ⚠️ id del doctor (que normalmente = user_id)
+        .eq("id", id)
         .single();
 
     if (error) {
@@ -178,6 +195,45 @@ router.post("/guides", verifyToken, isDoctor, async (req, res) => {
     res.json(data);
 });
 
+router.put("/guides/:id", verifyToken, isDoctor, async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const {
+        title,
+        category,
+        urgency,
+        description,
+        content,
+        read_time
+    } = req.body;
+
+    const { data, error } = await supabase
+        .from("medical_guides")
+        .update({
+            title,
+            category,
+            urgency,
+            description,
+            content,
+            read_time,
+            verified: false
+        })
+        .eq("id", id)
+        .eq("doctor_id", userId)
+        .select()
+        .single();
+
+    if (error) {
+        return res.status(400).json({ error: error.message });
+    }
+
+    if (!data) {
+        return res.status(404).json({ error: "Guía no encontrada o no tienes permiso" });
+    }
+
+    res.json(data);
+});
+
 router.delete("/guides/:id", verifyToken, isDoctor, async (req, res) => {
     const guideId = req.params.id;
     const userId = req.user.id;
@@ -195,7 +251,6 @@ router.delete("/guides/:id", verifyToken, isDoctor, async (req, res) => {
     res.json({ message: "Guía eliminada correctamente" });
 });
 
-// GET /rating/:type/:id -> Obtener promedio de calificación
 router.get("/rating/:type/:id", async (req, res) => {
     const { type, id } = req.params;
 

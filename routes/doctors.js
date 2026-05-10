@@ -92,7 +92,6 @@ router.post("/become-doctor", verifyToken, async (req, res) => {
         .update({ role: "doctor" })
         .eq("id", userId);
 
-    // insertar doctor
     const { data, error } = await supabase
         .from("doctors")
         .insert([{ id: userId, ...form }])
@@ -113,7 +112,8 @@ router.get("/:id", async (req, res) => {
       *,
       profiles (
         full_name,
-        email
+        email,
+        avatar_url
       )
     `)
         .eq("id", id)
@@ -132,7 +132,7 @@ router.get("/", async (req, res) => {
             .from("doctors")
             .select(`
                 *,
-                profiles(full_name, email)
+                profiles(full_name, email, avatar_url)
             `);
 
         if (drError) throw drError;
